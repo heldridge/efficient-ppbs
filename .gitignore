@@ -1,0 +1,11 @@
+**/*/node_modules/
+*.ptau
+*.bin
+proof.json
+public.json
+*.wtns
+**/*_js
+verification_key.json
+*.zkey
+*.r1cs
+input.json

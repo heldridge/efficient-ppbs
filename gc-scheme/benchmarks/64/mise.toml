@@ -1,0 +1,48 @@
+[vars]
+circuit_path = '../../circom/gc-64.circom'
+prefix = 'gc-64'
+
+[tasks.compile]
+run = 'circom {{vars.circuit_path}} --r1cs --wasm'
+
+[tasks.gen_input]
+run = 'ts-node ../../generate-input.ts --ell 64 -o input.json'
+
+[tasks.gen_witness]
+run = """
+#!/bin/bash
+pushd '{{vars.prefix}}_js' || return
+node generate_witness.js '{{vars.prefix}}.wasm' ../input.json ../witness.wtns
+popd || return
+"""
+
+[tasks.download_ptau]
+run = """
+curl -L -O https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_21.ptau
+mv powersOfTau28_hez_final_21.ptau final.ptau
+"""
+
+[tasks.compute_ptau]
+run = """
+snarkjs powersoftau new bn128 21 1.ptau -v
+snarkjs powersoftau prepare phase2 1.ptau final.ptau -v
+"""
+
+[tasks.gen_ver_key]
+run = """
+snarkjs groth16 setup '{{vars.prefix}}.r1cs' final.ptau 0.zkey
+snarkjs zkey export verificationkey 0.zkey verification_key.json
+"""
+
+[tasks.prove]
+run = 'snarkjs groth16 prove 0.zkey witness.wtns proof.json public.json'
+
+[tasks.cleanup]
+run = 'rm -rf *_js *.ptau *.zkey *.json *.r1cs *.wtns'
+
+[tasks.get_size]
+run = """
+ts-node ../../public-serializer.ts public.json 64 public.bin
+echo "True size (no Groth16):"
+wc -c public.bin
+"""
